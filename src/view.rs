@@ -478,10 +478,10 @@ fn text(size: f32, weight: u16, tracking: f32) -> TextStyle {
 
 pub struct Navigation {
     pub surface: Rect,
-    pub items: [Rect; 3],
+    pub items: [Rect; 4],
 }
 pub fn navigation(assets: &Assets, language: Language) -> Navigation {
-    let widths = ["home", "apps", "settings"]
+    let widths = ["home", "apps", "settings", "inputs"]
         .map(|key| (assets.width(language.t(key), text(20.8, 550, -0.02)) + 46.4).max(99.2));
     let width = widths.iter().sum::<f32>() + 25.6 + 19.6;
     let mut x = (1920. - width) / 2. + 9.8;
@@ -554,6 +554,7 @@ pub fn scene_with_pill(
         Page::Home => home(&mut out, state, assets, now),
         Page::Apps => library(&mut out, state, assets),
         Page::Settings => settings(&mut out, state, assets),
+        Page::Inputs => inputs_page(&mut out, state, assets),
     }
     if let Some(error) = &state.error
         && !state.inventory.apps.is_empty()
@@ -736,7 +737,7 @@ fn header(
         // the destination tab's control rectangle.
         out.border(pill.inset(-5.), 37., 2., c(0xf0f0f0, 0.95));
     }
-    for (index, key) in ["home", "apps", "settings"].into_iter().enumerate() {
+    for (index, key) in ["home", "apps", "settings", "inputs"].into_iter().enumerate() {
         let rect = layout.items[index];
         out.text(
             language.t(key),
@@ -1172,7 +1173,6 @@ fn home(out: &mut Scene, state: &State, assets: &Assets, now: OffsetDateTime) {
     }
     let apps = state.apps();
     let names = state.preferences.show_home_names;
-    let mut grid_height = FACE_HEIGHT;
     if state.loading && state.inventory.apps.is_empty() {
         for index in 0..6 {
             out.shape(
@@ -1208,18 +1208,6 @@ fn home(out: &mut Scene, state: &State, assets: &Assets, now: OffsetDateTime) {
                 action: Some(if error { Target::Retry } else { Target::Browse }),
             },
         );
-        grid_height = 247.5;
-    }
-    if !apps.is_empty() {
-        grid_height = FACE_HEIGHT
-            + if names {
-                18.4 + apps
-                    .iter()
-                    .map(|app| caption_height(state, assets, app, HOME_TILE_WIDTH))
-                    .fold(58.24, f32::max)
-            } else {
-                0.
-            };
     }
     // Like Apple TV's rows, the favourites run to the screen edge: the next tile shows cut off
     // at the right (and a scrolled-away one at the left), so it is clear the row continues.
@@ -1255,13 +1243,27 @@ fn home(out: &mut Scene, state: &State, assets: &Assets, now: OffsetDateTime) {
     }
     out.draw.push(Draw::EdgeFadeX(None));
     out.draw.push(Draw::Clip(Some(state.content_viewport())));
-    let input_y = 544.8 + grid_height + 41.6 - s;
+}
+
+/// Dedicated inputs tab. Visibility and custom names reuse the stock Luma settings.
+fn inputs_page(out: &mut Scene, state: &State, assets: &Assets) {
+    let language = state.preferences.language;
+    let input_y = 194. - state.scroll;
     let inputs: Vec<_> = state
         .inventory
         .inputs
         .iter()
         .filter(|input| state.preferences.input_visible(input))
         .collect();
+    if inputs.is_empty() {
+        out.text(
+            language.t("noInputs"),
+            Rect::new(84., input_y + 70., 1600., 40.),
+            text(24., 450, -0.02),
+            c(0xe8e8e8, 0.65),
+            false,
+        );
+    }
     if !inputs.is_empty() {
         out.text(
             language.t("inputsHeading"),
@@ -3843,7 +3845,7 @@ mod tests {
     }
 
     #[test]
-    fn hidden_home_widgets_collapse_without_moving_favorites_or_inputs() {
+    fn hidden_home_widgets_collapse_without_moving_favorites() {
         let assets = assets();
         let mut state = State::new(Preferences::default());
         state.set_inventory(demo_inventory(), None);
@@ -3871,7 +3873,7 @@ mod tests {
                 for control in original
                     .controls
                     .iter()
-                    .filter(|control| matches!(control.target, Target::App(_) | Target::Input(_)))
+                    .filter(|control| matches!(control.target, Target::App(_)))
                 {
                     let other = rendered
                         .controls
