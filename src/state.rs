@@ -40,6 +40,7 @@ pub enum Page {
     Home,
     Apps,
     Settings,
+    Inputs,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -419,6 +420,7 @@ impl State {
             Page::Home => 0,
             Page::Apps => 1,
             Page::Settings => 2,
+            Page::Inputs => 3,
         }
     }
 
@@ -454,6 +456,7 @@ impl State {
         self.page = match index {
             1 => Page::Apps,
             2 => Page::Settings,
+            3 => Page::Inputs,
             _ => Page::Home,
         };
         self.focus = Target::Nav(self.page_index());
@@ -713,6 +716,10 @@ impl State {
                 .map(|app| Target::App(app.id.clone()))
                 .unwrap_or(Target::Filter(1)),
             Page::Settings => Target::Sidebar(0),
+            Page::Inputs => self.inventory.inputs.iter()
+                .find(|input| self.preferences.input_visible(input))
+                .map(|input| Target::Input(input.id.clone()))
+                .unwrap_or(Target::Nav(3)),
         }
     }
 
@@ -1340,7 +1347,7 @@ impl State {
             if let Target::Nav(index) = self.focus {
                 let next = match direction {
                     Direction::Left if index > 0 => Some(index - 1),
-                    Direction::Right if index < 2 => Some(index + 1),
+                    Direction::Right if index < 3 => Some(index + 1),
                     _ => None,
                 };
                 if let Some(next) = next {
