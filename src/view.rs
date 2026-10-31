@@ -737,7 +737,10 @@ fn header(
         // the destination tab's control rectangle.
         out.border(pill.inset(-5.), 37., 2., c(0xf0f0f0, 0.95));
     }
-    for (index, key) in ["home", "apps", "settings", "inputs"].into_iter().enumerate() {
+    for (index, key) in ["home", "apps", "settings", "inputs"]
+        .into_iter()
+        .enumerate()
+    {
         let rect = layout.items[index];
         out.text(
             language.t(key),
