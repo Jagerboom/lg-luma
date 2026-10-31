@@ -612,7 +612,9 @@ fn favorites_are_at_the_bottom_and_inputs_are_the_second_tab() {
     assert_eq!(nav.len(), 4);
     nav.sort_by(|a, b| a.rect.x.total_cmp(&b.rect.x));
     assert_eq!(
-        nav.iter().map(|control| &control.target).collect::<Vec<_>>(),
+        nav.iter()
+            .map(|control| &control.target)
+            .collect::<Vec<_>>(),
         vec![
             &Target::Nav(0),
             &Target::Nav(3),
