@@ -2842,7 +2842,10 @@ fn clock_date_and_home_input_descriptions_use_larger_text() {
             state.preferences.input_name(input).is_some(),
             language,
         );
-        state.preferences.input_modes.insert(input.id.clone(), InputMode::On);
+        state
+            .preferences
+            .input_modes
+            .insert(input.id.clone(), InputMode::On);
         state.open(3);
         let inputs_rendered = scene(&state);
         assert!(inputs_rendered.draw.iter().any(|draw| matches!(draw,
