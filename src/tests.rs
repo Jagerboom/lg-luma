@@ -583,11 +583,43 @@ fn reordering_skips_hidden_and_unavailable_favorite_slots() {
 fn focused_navigation_tabs_switch_pages_immediately() {
     let mut state = ready();
     state.direction(Direction::Right, &controls(&state));
+    assert_eq!(state.page, Page::Inputs);
+    assert_eq!(state.focus, Target::Nav(3));
+    state.direction(Direction::Right, &controls(&state));
     assert_eq!(state.page, Page::Apps);
     assert_eq!(state.focus, Target::Nav(1));
     state.direction(Direction::Right, &controls(&state));
     assert_eq!(state.page, Page::Settings);
     assert_eq!(state.focus, Target::Nav(2));
+}
+
+#[test]
+fn favorites_are_at_the_bottom_and_inputs_are_the_second_tab() {
+    let state = ready();
+    let rendered = scene(&state);
+    let first_favorite = rendered
+        .controls
+        .iter()
+        .find(|control| matches!(control.target, Target::App(_)))
+        .unwrap();
+    assert_eq!(first_favorite.rect.y, 810.);
+
+    let mut nav: Vec<_> = rendered
+        .controls
+        .iter()
+        .filter(|control| matches!(control.target, Target::Nav(_)))
+        .collect();
+    assert_eq!(nav.len(), 4);
+    nav.sort_by(|a, b| a.rect.x.total_cmp(&b.rect.x));
+    assert_eq!(
+        nav.iter().map(|control| &control.target).collect::<Vec<_>>(),
+        vec![
+            &Target::Nav(0),
+            &Target::Nav(3),
+            &Target::Nav(1),
+            &Target::Nav(2),
+        ]
+    );
 }
 
 #[test]
