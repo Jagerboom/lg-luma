@@ -22,10 +22,12 @@ fn ready() -> State {
 #[test]
 fn inputs_have_their_own_tab_and_reuse_visibility_settings() {
     let mut state = ready();
-    assert!(!scene(&state)
-        .controls
-        .iter()
-        .any(|control| matches!(control.target, Target::Input(_))));
+    assert!(
+        !scene(&state)
+            .controls
+            .iter()
+            .any(|control| matches!(control.target, Target::Input(_)))
+    );
 
     state.open(3);
     assert_eq!(state.page, Page::Inputs);
@@ -34,14 +36,23 @@ fn inputs_have_their_own_tab_and_reuse_visibility_settings() {
         .iter()
         .filter(|control| matches!(control.target, Target::Input(_)))
         .count();
-    let expected = state.inventory.inputs.iter()
+    let expected = state
+        .inventory
+        .inputs
+        .iter()
         .filter(|input| state.preferences.input_visible(input))
         .count();
     assert_eq!(visible, expected);
-    assert_eq!(state.first_content(), state.inventory.inputs.iter()
-        .find(|input| state.preferences.input_visible(input))
-        .map(|input| Target::Input(input.id.clone()))
-        .unwrap_or(Target::Nav(3)));
+    assert_eq!(
+        state.first_content(),
+        state
+            .inventory
+            .inputs
+            .iter()
+            .find(|input| state.preferences.input_visible(input))
+            .map(|input| Target::Input(input.id.clone()))
+            .unwrap_or(Target::Nav(3))
+    );
 }
 
 #[test]
