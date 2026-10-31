@@ -716,7 +716,10 @@ impl State {
                 .map(|app| Target::App(app.id.clone()))
                 .unwrap_or(Target::Filter(1)),
             Page::Settings => Target::Sidebar(0),
-            Page::Inputs => self.inventory.inputs.iter()
+            Page::Inputs => self
+                .inventory
+                .inputs
+                .iter()
                 .find(|input| self.preferences.input_visible(input))
                 .map(|input| Target::Input(input.id.clone()))
                 .unwrap_or(Target::Nav(3)),
