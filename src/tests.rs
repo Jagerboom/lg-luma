@@ -211,26 +211,26 @@ fn favorites_edge_fragments_share_draw_hit_and_wheel_viewports() {
         .collect();
     state.preferences.favorites = Some(favorites.clone());
     assert_eq!(
-        state.hit_test(&controls(&state), 1860., 600.),
+        state.hit_test(&controls(&state), 1860., 860.),
         Some(Target::App(favorites[6].clone()))
     );
-    assert!(state.wheel_scroll(&controls(&state), Some((1860., 600.)), 0, -1));
+    assert!(state.wheel_scroll(&controls(&state), Some((1860., 860.)), 0, -1));
     assert!((state.home_scroll - crate::state::HOME_TILE_PITCH).abs() < 0.01);
     assert_eq!(state.scroll, 0.);
     assert_eq!(
-        state.hit_test(&controls(&state), 40., 600.),
+        state.hit_test(&controls(&state), 40., 860.),
         Some(Target::App(favorites[0].clone()))
     );
     let scroll = state.home_scroll;
     state.pointer_focus(Target::App(favorites[0].clone()));
     assert_eq!(state.home_scroll, scroll);
-    assert!(state.hit_test(&controls(&state), 4., 600.).is_none());
-    assert!(state.hit_test(&controls(&state), 1915., 600.).is_none());
+    assert!(state.hit_test(&controls(&state), 4., 860.).is_none());
+    assert!(state.hit_test(&controls(&state), 1915., 860.).is_none());
     assert!(state.hit_test(&controls(&state), 40., 1060.).is_none());
     let scene = scene(&state);
     let viewport = state.favorites_viewport();
     assert!(scene.draw.iter().any(|draw| matches!(draw, crate::renderer::Draw::Clip(Some(rect)) if rect.x == viewport.x && rect.w == viewport.w)));
-    assert!(state.wheel_scroll(&scene.controls, Some((40., 600.)), 0, 1));
+    assert!(state.wheel_scroll(&scene.controls, Some((40., 860.)), 0, 1));
     assert_eq!(state.home_scroll, 0.);
     assert_eq!(state.scroll, 0.);
 }
