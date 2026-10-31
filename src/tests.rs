@@ -20,6 +20,42 @@ fn ready() -> State {
 }
 
 #[test]
+fn inputs_have_their_own_tab_and_reuse_visibility_settings() {
+    let mut state = ready();
+    assert!(
+        !scene(&state)
+            .controls
+            .iter()
+            .any(|control| matches!(control.target, Target::Input(_)))
+    );
+
+    state.open(3);
+    assert_eq!(state.page, Page::Inputs);
+    let visible = scene(&state)
+        .controls
+        .iter()
+        .filter(|control| matches!(control.target, Target::Input(_)))
+        .count();
+    let expected = state
+        .inventory
+        .inputs
+        .iter()
+        .filter(|input| state.preferences.input_visible(input))
+        .count();
+    assert_eq!(visible, expected);
+    assert_eq!(
+        state.first_content(),
+        state
+            .inventory
+            .inputs
+            .iter()
+            .find(|input| state.preferences.input_visible(input))
+            .map(|input| Target::Input(input.id.clone()))
+            .unwrap_or(Target::Nav(3))
+    );
+}
+
+#[test]
 fn home_relaunch_returns_from_apps_and_settings() {
     for page in [1, 2] {
         let mut state = ready();
@@ -175,26 +211,26 @@ fn favorites_edge_fragments_share_draw_hit_and_wheel_viewports() {
         .collect();
     state.preferences.favorites = Some(favorites.clone());
     assert_eq!(
-        state.hit_test(&controls(&state), 1860., 600.),
+        state.hit_test(&controls(&state), 1860., 860.),
         Some(Target::App(favorites[6].clone()))
     );
-    assert!(state.wheel_scroll(&controls(&state), Some((1860., 600.)), 0, -1));
+    assert!(state.wheel_scroll(&controls(&state), Some((1860., 860.)), 0, -1));
     assert!((state.home_scroll - crate::state::HOME_TILE_PITCH).abs() < 0.01);
     assert_eq!(state.scroll, 0.);
     assert_eq!(
-        state.hit_test(&controls(&state), 40., 600.),
+        state.hit_test(&controls(&state), 40., 860.),
         Some(Target::App(favorites[0].clone()))
     );
     let scroll = state.home_scroll;
     state.pointer_focus(Target::App(favorites[0].clone()));
     assert_eq!(state.home_scroll, scroll);
-    assert!(state.hit_test(&controls(&state), 4., 600.).is_none());
-    assert!(state.hit_test(&controls(&state), 1915., 600.).is_none());
+    assert!(state.hit_test(&controls(&state), 4., 860.).is_none());
+    assert!(state.hit_test(&controls(&state), 1915., 860.).is_none());
     assert!(state.hit_test(&controls(&state), 40., 1060.).is_none());
     let scene = scene(&state);
     let viewport = state.favorites_viewport();
     assert!(scene.draw.iter().any(|draw| matches!(draw, crate::renderer::Draw::Clip(Some(rect)) if rect.x == viewport.x && rect.w == viewport.w)));
-    assert!(state.wheel_scroll(&scene.controls, Some((40., 600.)), 0, 1));
+    assert!(state.wheel_scroll(&scene.controls, Some((40., 860.)), 0, 1));
     assert_eq!(state.home_scroll, 0.);
     assert_eq!(state.scroll, 0.);
 }
@@ -547,11 +583,45 @@ fn reordering_skips_hidden_and_unavailable_favorite_slots() {
 fn focused_navigation_tabs_switch_pages_immediately() {
     let mut state = ready();
     state.direction(Direction::Right, &controls(&state));
+    assert_eq!(state.page, Page::Inputs);
+    assert_eq!(state.focus, Target::Nav(3));
+    state.direction(Direction::Right, &controls(&state));
     assert_eq!(state.page, Page::Apps);
     assert_eq!(state.focus, Target::Nav(1));
     state.direction(Direction::Right, &controls(&state));
     assert_eq!(state.page, Page::Settings);
     assert_eq!(state.focus, Target::Nav(2));
+}
+
+#[test]
+fn favorites_are_at_the_bottom_and_inputs_are_the_second_tab() {
+    let state = ready();
+    let rendered = scene(&state);
+    let first_favorite = rendered
+        .controls
+        .iter()
+        .find(|control| matches!(control.target, Target::App(_)))
+        .unwrap();
+    assert_eq!(first_favorite.rect.y, 810.);
+
+    let mut nav: Vec<_> = rendered
+        .controls
+        .iter()
+        .filter(|control| matches!(control.target, Target::Nav(_)))
+        .collect();
+    assert_eq!(nav.len(), 4);
+    nav.sort_by(|a, b| a.rect.x.total_cmp(&b.rect.x));
+    assert_eq!(
+        nav.iter()
+            .map(|control| &control.target)
+            .collect::<Vec<_>>(),
+        vec![
+            &Target::Nav(0),
+            &Target::Nav(3),
+            &Target::Nav(1),
+            &Target::Nav(2),
+        ]
+    );
 }
 
 #[test]
@@ -2806,7 +2876,13 @@ fn clock_date_and_home_input_descriptions_use_larger_text() {
             state.preferences.input_name(input).is_some(),
             language,
         );
-        assert!(rendered.draw.iter().any(|draw| matches!(draw,
+        state
+            .preferences
+            .input_modes
+            .insert(input.id.clone(), InputMode::On);
+        state.open(3);
+        let inputs_rendered = scene(&state);
+        assert!(inputs_rendered.draw.iter().any(|draw| matches!(draw,
             Draw::Text(text, rect, style, ..) if text == &description && style.size == 16.8 && rect.h == 25.2
         )));
     }

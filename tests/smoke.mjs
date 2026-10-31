@@ -494,12 +494,12 @@ try {
     preferences,
     JSON.stringify({ favorites: edgeFavorites, show_weather: false }),
   );
-  const edgeRight = await scenario('favorites-edge-right', 'home,click:1860:600');
+  const edgeRight = await scenario('favorites-edge-right', 'home,click:1860:860');
   assert.deepEqual(edgeRight.focus, { App: edgeFavorites[6] });
   assert.equal(edgeRight.home_scroll, 0, 'Clicking the fragment must not move it');
   const edgeLeft = await scenario(
     'favorites-edge-left',
-    `home,down,${Array(6).fill('right').join(',')},click:40:600`,
+    `home,down,${Array(6).fill('right').join(',')},click:40:860`,
   );
   assert.deepEqual(edgeLeft.focus, { App: edgeFavorites[0] });
   assert.ok(

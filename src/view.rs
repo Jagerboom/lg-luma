@@ -18,6 +18,9 @@ use time::OffsetDateTime;
 
 const MAIN_TOP: f32 = 108.8;
 const FACE_HEIGHT: f32 = 154.4;
+// Keep the favourite strip low to leave the wallpaper unobstructed on Home.
+const HOME_FAVORITES_HEADING_Y: f32 = 744.;
+const HOME_FAVORITES_TILE_Y: f32 = 810.;
 const GRID_PITCH: f32 = 296.4;
 const RECENTS_BACKDROP_OPACITY: f32 = 0.86;
 
@@ -478,18 +481,26 @@ fn text(size: f32, weight: u16, tracking: f32) -> TextStyle {
 
 pub struct Navigation {
     pub surface: Rect,
-    pub items: [Rect; 3],
+    pub items: [Rect; 4],
 }
 pub fn navigation(assets: &Assets, language: Language) -> Navigation {
-    let widths = ["home", "apps", "settings"]
-        .map(|key| (assets.width(language.t(key), text(20.8, 550, -0.02)) + 46.4).max(99.2));
-    let width = widths.iter().sum::<f32>() + 25.6 + 19.6;
+    // Visual order: Home, Inputs, Apps, Settings. Keep the existing page IDs
+    // so shortcuts, settings navigation and saved state stay compatible.
+    let widths = ["home", "inputs", "apps", "settings"]
+        .map(|key| (assets.width(language.t(key), text(20.8, 550, -0.02)) + 64.).max(112.));
+    let width = widths.iter().sum::<f32>() + (widths.len() - 1) as f32 * 12.8 + 19.6;
     let mut x = (1920. - width) / 2. + 9.8;
-    let items = widths.map(|width| {
+    let visual_items = widths.map(|width| {
         let rect = Rect::new(x, 52.3, width, 49.);
         x += width + 12.8;
         rect
     });
+    let items = [
+        visual_items[0],
+        visual_items[2],
+        visual_items[3],
+        visual_items[1],
+    ];
     Navigation {
         surface: Rect::new((1920. - width) / 2., 42.5, width, 68.6),
         items,
@@ -554,6 +565,7 @@ pub fn scene_with_pill(
         Page::Home => home(&mut out, state, assets, now),
         Page::Apps => library(&mut out, state, assets),
         Page::Settings => settings(&mut out, state, assets),
+        Page::Inputs => inputs_page(&mut out, state, assets),
     }
     if let Some(error) = &state.error
         && !state.inventory.apps.is_empty()
@@ -736,12 +748,12 @@ fn header(
         // the destination tab's control rectangle.
         out.border(pill.inset(-5.), 37., 2., c(0xf0f0f0, 0.95));
     }
-    for (index, key) in ["home", "apps", "settings"].into_iter().enumerate() {
+    for (index, key) in [(0, "home"), (3, "inputs"), (1, "apps"), (2, "settings")].into_iter() {
         let rect = layout.items[index];
         out.text(
             language.t(key),
             Rect::new(rect.x, 64.3, rect.w, 25.),
-            text(20.8, 550, -0.02),
+            assets.fit_text(language.t(key), text(20.8, 550, -0.02), rect.w - 40.),
             if state.page_index() == index {
                 c(0x2c2c2c, 1.)
             } else {
@@ -1156,7 +1168,7 @@ fn home(out: &mut Scene, state: &State, assets: &Assets, now: OffsetDateTime) {
     }
     out.text(
         language.t("favorites"),
-        Rect::new(84., 478.5 - s, 1000., 31.),
+        Rect::new(84., HOME_FAVORITES_HEADING_Y - s, 1000., 31.),
         text(23.2, 550, -0.035).leading(1.3),
         WHITE,
         false,
@@ -1164,7 +1176,7 @@ fn home(out: &mut Scene, state: &State, assets: &Assets, now: OffsetDateTime) {
     if state.moving.is_some() {
         out.text(
             language.t("moveApps"),
-            Rect::new(1686., 485. - s, 150., 24.),
+            Rect::new(1686., HOME_FAVORITES_HEADING_Y + 6.5 - s, 150., 24.),
             text(14.4, 400, 0.),
             c(0xdedede, 1.),
             true,
@@ -1172,13 +1184,12 @@ fn home(out: &mut Scene, state: &State, assets: &Assets, now: OffsetDateTime) {
     }
     let apps = state.apps();
     let names = state.preferences.show_home_names;
-    let mut grid_height = FACE_HEIGHT;
     if state.loading && state.inventory.apps.is_empty() {
         for index in 0..6 {
             out.shape(
                 Rect::new(
                     84. + index as f32 * GRID_PITCH,
-                    544.8 - s,
+                    HOME_FAVORITES_TILE_Y - s,
                     270.,
                     FACE_HEIGHT,
                 ),
@@ -1193,7 +1204,7 @@ fn home(out: &mut Scene, state: &State, assets: &Assets, now: OffsetDateTime) {
             state,
             assets,
             EmptyState {
-                rect: Rect::new(84., 533.6 - s, 1752., 258.7),
+                rect: Rect::new(84., HOME_FAVORITES_TILE_Y - 11.2 - s, 1752., 258.7),
                 icon: if error { "alert" } else { "heart" },
                 title: if error {
                     language.t("aLittleHelp")
@@ -1208,18 +1219,6 @@ fn home(out: &mut Scene, state: &State, assets: &Assets, now: OffsetDateTime) {
                 action: Some(if error { Target::Retry } else { Target::Browse }),
             },
         );
-        grid_height = 247.5;
-    }
-    if !apps.is_empty() {
-        grid_height = FACE_HEIGHT
-            + if names {
-                18.4 + apps
-                    .iter()
-                    .map(|app| caption_height(state, assets, app, HOME_TILE_WIDTH))
-                    .fold(58.24, f32::max)
-            } else {
-                0.
-            };
     }
     // Like Apple TV's rows, the favourites run to the screen edge: the next tile shows cut off
     // at the right (and a scrolled-away one at the left), so it is clear the row continues.
@@ -1245,7 +1244,7 @@ fn home(out: &mut Scene, state: &State, assets: &Assets, now: OffsetDateTime) {
             app,
             Rect::new(
                 84. + index as f32 * HOME_TILE_PITCH - state.home_scroll,
-                544.8 - s,
+                HOME_FAVORITES_TILE_Y - s,
                 HOME_TILE_WIDTH,
                 FACE_HEIGHT,
             ),
@@ -1255,13 +1254,27 @@ fn home(out: &mut Scene, state: &State, assets: &Assets, now: OffsetDateTime) {
     }
     out.draw.push(Draw::EdgeFadeX(None));
     out.draw.push(Draw::Clip(Some(state.content_viewport())));
-    let input_y = 544.8 + grid_height + 41.6 - s;
+}
+
+/// Dedicated inputs tab. Visibility and custom names reuse the stock Luma settings.
+fn inputs_page(out: &mut Scene, state: &State, assets: &Assets) {
+    let language = state.preferences.language;
+    let input_y = 194. - state.scroll;
     let inputs: Vec<_> = state
         .inventory
         .inputs
         .iter()
         .filter(|input| state.preferences.input_visible(input))
         .collect();
+    if inputs.is_empty() {
+        out.text(
+            language.t("noInputs"),
+            Rect::new(84., input_y + 70., 1600., 40.),
+            text(24., 450, -0.02),
+            c(0xe8e8e8, 0.65),
+            false,
+        );
+    }
     if !inputs.is_empty() {
         out.text(
             language.t("inputsHeading"),
@@ -3590,6 +3603,24 @@ mod tests {
     }
 
     #[test]
+    fn navigation_labels_fit_with_symmetric_padding_in_all_languages() {
+        let assets = assets();
+        for language in Language::ALL {
+            let layout = navigation(&assets, language);
+            let order = [(0, "home"), (3, "inputs"), (1, "apps"), (2, "settings")];
+            let mut previous_right = layout.surface.x;
+            for (index, key) in order {
+                let rect = layout.items[index];
+                assert!(rect.x >= previous_right);
+                let style = assets.fit_text(language.t(key), text(20.8, 550, -0.02), rect.w - 40.);
+                assert!(assets.width(language.t(key), style) <= rect.w - 40.);
+                previous_right = rect.x + rect.w;
+            }
+            assert!(previous_right <= layout.surface.x + layout.surface.w);
+        }
+    }
+
+    #[test]
     fn settings_breadcrumbs_use_equal_gaps_and_only_highlight_the_leaf() {
         let assets = assets();
         let mut state = State::new(Preferences::default());
@@ -3843,7 +3874,7 @@ mod tests {
     }
 
     #[test]
-    fn hidden_home_widgets_collapse_without_moving_favorites_or_inputs() {
+    fn hidden_home_widgets_collapse_without_moving_favorites() {
         let assets = assets();
         let mut state = State::new(Preferences::default());
         state.set_inventory(demo_inventory(), None);
@@ -3871,7 +3902,7 @@ mod tests {
                 for control in original
                     .controls
                     .iter()
-                    .filter(|control| matches!(control.target, Target::App(_) | Target::Input(_)))
+                    .filter(|control| matches!(control.target, Target::App(_)))
                 {
                     let other = rendered
                         .controls
