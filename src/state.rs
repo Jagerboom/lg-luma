@@ -1349,7 +1349,10 @@ impl State {
             }
             if let Target::Nav(index) = self.focus {
                 const NAV_ORDER: [usize; 4] = [0, 3, 1, 2];
-                let position = NAV_ORDER.iter().position(|item| *item == index).unwrap_or(0);
+                let position = NAV_ORDER
+                    .iter()
+                    .position(|item| *item == index)
+                    .unwrap_or(0);
                 let next = match direction {
                     Direction::Left if position > 0 => Some(NAV_ORDER[position - 1]),
                     Direction::Right if position + 1 < NAV_ORDER.len() => {
