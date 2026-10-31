@@ -495,7 +495,12 @@ pub fn navigation(assets: &Assets, language: Language) -> Navigation {
         x += width + 12.8;
         rect
     });
-    let items = [visual_items[0], visual_items[2], visual_items[3], visual_items[1]];
+    let items = [
+        visual_items[0],
+        visual_items[2],
+        visual_items[3],
+        visual_items[1],
+    ];
     Navigation {
         surface: Rect::new((1920. - width) / 2., 42.5, width, 68.6),
         items,
@@ -743,9 +748,7 @@ fn header(
         // the destination tab's control rectangle.
         out.border(pill.inset(-5.), 37., 2., c(0xf0f0f0, 0.95));
     }
-    for (index, key) in [(0, "home"), (3, "inputs"), (1, "apps"), (2, "settings")]
-        .into_iter()
-    {
+    for (index, key) in [(0, "home"), (3, "inputs"), (1, "apps"), (2, "settings")].into_iter() {
         let rect = layout.items[index];
         out.text(
             language.t(key),
@@ -3609,11 +3612,7 @@ mod tests {
             for (index, key) in order {
                 let rect = layout.items[index];
                 assert!(rect.x >= previous_right);
-                let style = assets.fit_text(
-                    language.t(key),
-                    text(20.8, 550, -0.02),
-                    rect.w - 40.,
-                );
+                let style = assets.fit_text(language.t(key), text(20.8, 550, -0.02), rect.w - 40.);
                 assert!(assets.width(language.t(key), style) <= rect.w - 40.);
                 previous_right = rect.x + rect.w;
             }
